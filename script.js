@@ -164,15 +164,8 @@ class RadioPlayer {
         // Устанавливаем статичную информацию по умолчанию
         this.setDefaultTrackInfo();
         
-        // На HTTPS сайтах используем только статичную информацию
-        if (window.location.protocol === 'https:') {
-            console.log('HTTPS detected - using static track info only');
-            // На сервере используем только статичную информацию
-            return;
-        }
-        
-        // На HTTP сайтах пытаемся получить информацию с сервера
-        console.log('HTTP detected - trying to fetch track info');
+        // Пытаемся получить информацию с сервера независимо от протокола
+        console.log('Trying to fetch track info from Icecast server...');
         this.updateTrackInfo();
         this.trackUpdateInterval = setInterval(() => {
             this.updateTrackInfo();
@@ -181,8 +174,23 @@ class RadioPlayer {
     
     async updateTrackInfo() {
         try {
-            // Получаем информацию с Icecast сервера
-            const response = await fetch('http://193.168.3.158:8000/status-json.xsl', {
+            // Сначала пробуем прямой запрос (работает на HTTP)
+            if (window.location.protocol === 'http:') {
+                const response = await fetch('http://193.168.3.158:8000/status-json.xsl', {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.processTrackData(data);
+                    return;
+                }
+            }
+            
+            // На HTTPS пробуем через наш собственный proxy
+            const response = await fetch('/api/icecast-proxy', {
                 method: 'GET',
                 mode: 'cors',
                 cache: 'no-cache'
@@ -190,77 +198,94 @@ class RadioPlayer {
             
             if (response.ok) {
                 const data = await response.json();
-                
-                // Ищем информацию о нашем потоке
-                if (data.icestats && data.icestats.source) {
-                    const source = data.icestats.source;
-                    let currentTrack = '';
-                    
-                    // Ищем текущий трек в разных форматах
-                    if (source.title) {
-                        currentTrack = source.title;
-                    } else if (source.yp_currently_playing) {
-                        currentTrack = source.yp_currently_playing;
-                    } else if (source.server_description) {
-                        currentTrack = source.server_description;
-                    }
-                    
-                    if (currentTrack && currentTrack !== this.lastTrackTitle) {
-                        const trackInfo = this.parseTrackInfo(currentTrack);
-                        
-                        this.trackTitle.textContent = trackInfo.title;
-                        this.artistName.textContent = trackInfo.artist;
-                        
-                        this.lastTrackTitle = trackInfo.title;
-                        this.lastArtistName = trackInfo.artist;
-                        
-                        // Пытаемся найти обложку для трека
-                        this.searchCoverForTrack(trackInfo.artist, trackInfo.title);
-                    }
-                }
+                this.processTrackData(data);
             } else {
-                // Если Icecast недоступен, пробуем альтернативный метод
+                // Если наш proxy недоступен, пробуем внешние CORS proxy
                 await this.updateTrackInfoAlternative();
             }
         } catch (error) {
-            console.log('Icecast track info error:', error);
-            // Если ошибка связана с Mixed Content или CORS, используем статичную информацию
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                console.log('Using static track info due to network restrictions');
-                this.setDefaultTrackInfo();
-            } else {
-                // Пробуем альтернативный метод
-                await this.updateTrackInfoAlternative();
+            console.log('Track info error:', error);
+            // Пробуем альтернативный метод
+            await this.updateTrackInfoAlternative();
+        }
+    }
+    
+    processTrackData(data) {
+        // Ищем информацию о нашем потоке
+        if (data.icestats && data.icestats.source) {
+            const source = data.icestats.source;
+            let currentTrack = '';
+            
+            // Ищем текущий трек в разных форматах
+            if (source.title) {
+                currentTrack = source.title;
+            } else if (source.yp_currently_playing) {
+                currentTrack = source.yp_currently_playing;
+            } else if (source.server_description) {
+                currentTrack = source.server_description;
+            }
+            
+            if (currentTrack && currentTrack !== this.lastTrackTitle) {
+                const trackInfo = this.parseTrackInfo(currentTrack);
+                
+                this.trackTitle.textContent = trackInfo.title;
+                this.artistName.textContent = trackInfo.artist;
+                
+                this.lastTrackTitle = trackInfo.title;
+                this.lastArtistName = trackInfo.artist;
+                
+                // Пытаемся найти обложку для трека
+                this.searchCoverForTrack(trackInfo.artist, trackInfo.title);
             }
         }
     }
     
     async updateTrackInfoAlternative() {
         try {
-            // Альтернативный метод - парсим HTML страницу статуса
-            const response = await fetch('http://193.168.3.158:8000/', {
-                method: 'GET',
-                mode: 'cors',
-                cache: 'no-cache'
-            });
+            // Альтернативный метод - пробуем разные CORS proxy
+            const proxies = [
+                'https://cors-anywhere.herokuapp.com/',
+                'https://api.allorigins.win/raw?url=',
+                'https://thingproxy.freeboard.io/fetch/'
+            ];
             
-            if (response.ok) {
-                const htmlText = await response.text();
-                const trackData = this.parseTrackDataFromHTML(htmlText);
-                
-                if (trackData.title && trackData.title !== this.lastTrackTitle) {
-                    this.trackTitle.textContent = trackData.title;
-                    this.artistName.textContent = trackData.artist;
+            for (const proxyUrl of proxies) {
+                try {
+                    const icecastUrl = 'http://193.168.3.158:8000/';
+                    const response = await fetch(proxyUrl + icecastUrl, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
                     
-                    this.lastTrackTitle = trackData.title;
-                    this.lastArtistName = trackData.artist;
-                    
-                    // Пытаемся найти обложку для трека
-                    this.searchCoverForTrack(trackData.artist, trackData.title);
+                    if (response.ok) {
+                        const htmlText = await response.text();
+                        const trackData = this.parseTrackDataFromHTML(htmlText);
+                        
+                        if (trackData.title && trackData.title !== this.lastTrackTitle) {
+                            this.trackTitle.textContent = trackData.title;
+                            this.artistName.textContent = trackData.artist;
+                            
+                            this.lastTrackTitle = trackData.title;
+                            this.lastArtistName = trackData.artist;
+                            
+                            // Пытаемся найти обложку для трека
+                            this.searchCoverForTrack(trackData.artist, trackData.title);
+                            return; // Успешно получили данные
+                        }
+                    }
+                } catch (proxyError) {
+                    console.log(`Proxy ${proxyUrl} failed:`, proxyError);
+                    continue; // Пробуем следующий proxy
                 }
-            } else {
-                this.setDefaultTrackInfo();
             }
+            
+            // Если все proxy не сработали, используем статичную информацию
+            console.log('All proxies failed, using static track info');
+            this.setDefaultTrackInfo();
         } catch (error) {
             console.log('Alternative track info error:', error);
             this.setDefaultTrackInfo();
