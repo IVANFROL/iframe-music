@@ -302,8 +302,10 @@
     </div>
 
     <audio id="audioPlayer" preload="none">
-        <source src="https://193.168.3.158:8000/online" type="audio/mpeg">
         <source src="http://193.168.3.158:8000/online" type="audio/mpeg">
+        <source src="https://193.168.3.158:8000/online" type="audio/mpeg">
+        <source src="http://116.203.14.14:8000/online" type="audio/mpeg">
+        <source src="https://116.203.14.14:8000/online" type="audio/mpeg">
     </audio>
 
     <script>
@@ -346,6 +348,13 @@
                 
                 this.audio.addEventListener('canplay', () => {
                     this.loadingStatus.style.display = 'none';
+                    this.setStatus('ready');
+                    console.log('Audio loaded and ready to play');
+                });
+                
+                this.audio.addEventListener('loadeddata', () => {
+                    console.log('Audio data loaded successfully');
+                    this.setStatus('ready');
                 });
                 
                 this.audio.addEventListener('error', () => {
@@ -355,19 +364,34 @@
             }
             
             setupAudioSource() {
-                // Пытаемся сначала HTTPS, потом HTTP
-                const httpsSource = 'https://193.168.3.158:8000/online';
-                const httpSource = 'http://193.168.3.158:8000/online';
+                // Список источников для попытки подключения
+                const sources = [
+                    'http://193.168.3.158:8000/online',
+                    'https://193.168.3.158:8000/online',
+                    'http://116.203.14.14:8000/online',
+                    'https://116.203.14.14:8000/online'
+                ];
                 
-                // Устанавливаем HTTPS как основной источник
-                this.audio.src = httpsSource;
+                let currentSourceIndex = 0;
                 
-                // Если HTTPS не работает, переключаемся на HTTP
-                this.audio.addEventListener('error', () => {
-                    if (this.audio.src === httpsSource) {
-                        console.log('HTTPS failed, trying HTTP');
-                        this.audio.src = httpSource;
+                const tryNextSource = () => {
+                    if (currentSourceIndex < sources.length) {
+                        console.log(`Trying source ${currentSourceIndex + 1}: ${sources[currentSourceIndex]}`);
+                        this.audio.src = sources[currentSourceIndex];
+                        currentSourceIndex++;
+                    } else {
+                        console.log('All audio sources failed');
+                        this.setStatus('error');
                     }
+                };
+                
+                // Устанавливаем первый источник
+                tryNextSource();
+                
+                // Обработчик ошибок для переключения на следующий источник
+                this.audio.addEventListener('error', () => {
+                    console.log(`Source failed: ${this.audio.src}`);
+                    tryNextSource();
                 });
             }
             
@@ -380,11 +404,25 @@
             }
             
             play() {
+                // Если аудио еще не загружено, попробуем загрузить
+                if (this.audio.readyState === 0) {
+                    this.audio.load();
+                }
+                
                 this.audio.play().then(() => {
                     this.isPlaying = true;
                     this.updatePlayButton();
+                    this.setStatus('playing');
+                    console.log('Audio playing successfully');
                 }).catch(error => {
                     console.log('Play failed:', error);
+                    this.setStatus('error');
+                    
+                    // Если воспроизведение не удалось, попробуем переключить источник
+                    if (error.name === 'NotSupportedError' || error.name === 'AbortError') {
+                        console.log('Trying to switch audio source...');
+                        this.setupAudioSource();
+                    }
                 });
             }
             
@@ -406,6 +444,30 @@
             setVolume(volume) {
                 this.audio.volume = volume / 100;
                 this.volumeSlider.value = volume;
+            }
+            
+            setStatus(type) {
+                // Добавляем индикатор статуса если его нет
+                let statusDot = document.getElementById('statusDot');
+                if (!statusDot) {
+                    statusDot = document.createElement('div');
+                    statusDot.id = 'statusDot';
+                    statusDot.className = 'status-dot';
+                    statusDot.style.cssText = 'width: 8px; height: 8px; border-radius: 50%; background: #666; margin-left: 8px;';
+                    document.querySelector('.controls').appendChild(statusDot);
+                }
+                
+                statusDot.className = `status-dot ${type}`;
+                
+                if (type === 'playing') {
+                    statusDot.style.background = '#4CAF50';
+                } else if (type === 'loading') {
+                    statusDot.style.background = '#ff9800';
+                } else if (type === 'error') {
+                    statusDot.style.background = '#f44336';
+                } else {
+                    statusDot.style.background = '#666';
+                }
             }
             
             async startTrackInfoUpdate() {
