@@ -1,0 +1,13 @@
+{
+  "name": "radio-nostalgie-player",
+  "version": "1.0.0",
+  "description": "Radio Nostalgie streaming player with iframe support",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "build": "echo 'No build step required'"
+  },
+  "keywords": ["radio", "music", "player", "streaming", "iframe"],
+  "author": "Ivan Frolovich",
+  "license": "MIT"
+}

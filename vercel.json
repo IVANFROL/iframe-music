@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "iframe.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "example-usage.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "iframe-code.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "script.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "style.css",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/iframe",
+      "dest": "/iframe.html"
+    },
+    {
+      "src": "/example",
+      "dest": "/example-usage.html"
+    },
+    {
+      "src": "/code",
+      "dest": "/iframe-code.html"
+    }
+  ]
+}
