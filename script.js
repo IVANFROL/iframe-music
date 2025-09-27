@@ -23,6 +23,7 @@ class RadioPlayer {
         this.setupEventListeners();
         this.updateVolume();
         this.startTrackInfoUpdate();
+        this.setupAudioSource();
         
         // Обработка сообщений от родительского окна
         window.addEventListener('message', (event) => {
@@ -135,6 +136,28 @@ class RadioPlayer {
     
     setStatus(type) {
         this.statusDot.className = `status-dot ${type}`;
+    }
+    
+    setupAudioSource() {
+        // Если мы на HTTPS, пытаемся использовать HTTPS источник
+        if (window.location.protocol === 'https:') {
+            this.audio.src = 'https://193.168.3.158:8000/online';
+            
+            // Если HTTPS не работает, переключаемся на HTTP
+            this.audio.addEventListener('error', () => {
+                console.log('HTTPS audio failed, trying HTTP fallback');
+                this.audio.src = 'http://193.168.3.158:8000/online';
+                
+                // Если и HTTP не работает, показываем сообщение
+                this.audio.addEventListener('error', () => {
+                    console.log('All audio sources failed');
+                    this.setStatus('error');
+                }, { once: true });
+            }, { once: true });
+        } else {
+            // На HTTP используем HTTP источник
+            this.audio.src = 'http://193.168.3.158:8000/online';
+        }
     }
     
     async startTrackInfoUpdate() {
