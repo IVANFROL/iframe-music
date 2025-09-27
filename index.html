@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Nostalgie - Потоковый плеер</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="player-container">
+        <div class="player">
+            <div class="album-art-section">
+                <div class="album-art">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjBmMGYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5SYWRpbyBOb3N0YWxnaWU8L3RleHQ+Cjwvc3ZnPgo=" alt="Обложка" id="albumCover">
+                    <div class="play-overlay" id="playOverlay">
+                        <div class="play-button" id="playBtn">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="player-info-section">
+                <div class="track-info">
+                    <h3 class="track-title" id="trackTitle">Radio Nostalgie</h3>
+                    <p class="artist-name" id="artistName">Музыка проверенная временем</p>
+                </div>
+                
+                <div class="player-controls">
+                    <button class="control-btn play-btn" id="playPauseBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                    
+                    <div class="volume-control">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                    </div>
+                    
+                    <div class="status-indicator">
+                        <div class="status-dot" id="statusDot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" preload="none" crossorigin="anonymous">
+        <source src="http://193.168.3.158:8000/online" type="audio/mpeg">
+        Ваш браузер не поддерживает аудио элемент.
+    </audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
