@@ -138,11 +138,16 @@ class RadioPlayer {
     }
     
     async startTrackInfoUpdate() {
-        // Обновляем информацию о треке каждые 10 секунд
-        this.updateTrackInfo();
-        this.trackUpdateInterval = setInterval(() => {
+        // Устанавливаем статичную информацию по умолчанию
+        this.setDefaultTrackInfo();
+        
+        // Пытаемся получить информацию с сервера только если мы не на HTTPS
+        if (window.location.protocol !== 'https:') {
             this.updateTrackInfo();
-        }, 10000);
+            this.trackUpdateInterval = setInterval(() => {
+                this.updateTrackInfo();
+            }, 10000);
+        }
     }
     
     async updateTrackInfo() {
@@ -190,8 +195,14 @@ class RadioPlayer {
             }
         } catch (error) {
             console.log('Icecast track info error:', error);
-            // Пробуем альтернативный метод
-            await this.updateTrackInfoAlternative();
+            // Если ошибка связана с Mixed Content или CORS, используем статичную информацию
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                console.log('Using static track info due to network restrictions');
+                this.setDefaultTrackInfo();
+            } else {
+                // Пробуем альтернативный метод
+                await this.updateTrackInfoAlternative();
+            }
         }
     }
     
