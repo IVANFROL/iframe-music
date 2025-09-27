@@ -334,11 +334,7 @@
             }
             
             async startTrackInfoUpdate() {
-                // Устанавливаем статичную информацию по умолчанию
-                this.setDefaultTrackInfo();
-                
-                // Пытаемся получить информацию с сервера независимо от протокола
-                console.log('Trying to fetch track info from Icecast server...');
+                // Обновляем информацию о треке каждые 10 секунд
                 this.updateTrackInfo();
                 this.trackUpdateInterval = setInterval(() => {
                     this.updateTrackInfo();
@@ -377,191 +373,43 @@
             
             async updateTrackInfo() {
                 try {
-                    // Сначала пробуем прямой запрос (работает на HTTP)
-                    if (window.location.protocol === 'http:') {
-                        const response = await fetch('http://193.168.3.158:8000/status-json.xsl', {
-                            method: 'GET',
-                            mode: 'cors',
-                            cache: 'no-cache'
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.processTrackData(data);
-                            return;
+                    const response = await fetch('http://193.168.3.158:8000/status-json.xsl');
+                    const data = await response.json();
+                    
+                    if (data.icestats && data.icestats.source) {
+                        const source = data.icestats.source;
+                        if (source.title) {
+                            this.trackTitle.textContent = source.title;
                         }
-                    }
-                    
-                    // На HTTPS пробуем через наш собственный proxy
-                    const response = await fetch('/api/icecast-proxy', {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-cache'
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.processTrackData(data);
-                    } else {
-                        // Если наш proxy недоступен, пробуем внешние CORS proxy
-                        await this.updateTrackInfoAlternative();
-                    }
-                } catch (error) {
-                    console.log('Track info error:', error);
-                    // Пробуем альтернативный метод
-                    await this.updateTrackInfoAlternative();
-                }
-            }
-            
-            processTrackData(data) {
-                // Ищем информацию о нашем потоке
-                if (data.icestats && data.icestats.source) {
-                    const source = data.icestats.source;
-                    let currentTrack = '';
-                    
-                    // Ищем текущий трек в разных форматах
-                    if (source.title) {
-                        currentTrack = source.title;
-                    } else if (source.yp_currently_playing) {
-                        currentTrack = source.yp_currently_playing;
-                    } else if (source.server_description) {
-                        currentTrack = source.server_description;
-                    }
-                    
-                    if (currentTrack) {
-                        const trackInfo = this.parseTrackInfo(currentTrack);
-                        
-                        this.trackTitle.textContent = trackInfo.title;
-                        this.trackArtist.textContent = trackInfo.artist;
-                        
-                        // Пытаемся найти обложку для трека
-                        this.searchCoverForTrack(trackInfo.artist, trackInfo.title);
-                    }
-                }
-            }
-            
-            parseTrackInfo(trackString) {
-                // Пытаемся разделить строку на исполнителя и название трека
-                const separators = [' - ', ' – ', ' — ', ': ', ' / ', ' | '];
-                let artist = 'Radio Nostalgie';
-                let title = 'Музыка проверенная временем';
-                
-                for (let sep of separators) {
-                    if (trackString.includes(sep)) {
-                        const parts = trackString.split(sep);
-                        if (parts.length >= 2) {
-                            artist = parts[0].trim();
-                            title = parts[1].trim();
-                            break;
+                        if (source.artist) {
+                            this.trackArtist.textContent = source.artist;
                         }
-                    }
-                }
-                
-                // Если разделитель не найден, используем всю строку как название
-                if (artist === 'Radio Nostalgie' && title === 'Музыка проверенная временем') {
-                    title = trackString;
-                }
-                
-                return { artist, title };
-            }
-            
-            async searchCoverForTrack(artist, title) {
-                try {
-                    // Пытаемся найти обложку через iTunes API
-                    const itunesResponse = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&media=music&limit=1`);
-                    
-                    if (itunesResponse.ok) {
-                        const data = await itunesResponse.json();
-                        if (data.results && data.results.length > 0) {
-                            const track = data.results[0];
-                            if (track.artworkUrl100) {
-                                // Используем обложку высокого качества
-                                const coverUrl = track.artworkUrl100.replace('100x100', '300x300');
-                                this.albumCover.src = coverUrl;
-                                console.log('Cover found via iTunes:', coverUrl);
-                                return;
-                            }
+                        if (source.album) {
+                            this.albumCover.src = source.album;
                         }
                     }
                 } catch (error) {
-                    console.log('iTunes API error:', error);
+                    console.log('Track info update failed:', error);
+                    this.updateTrackInfoAlternative();
                 }
-                
-                // Если не удалось найти обложку, используем стандартную
-                this.albumCover.src = this.getDefaultCover();
             }
+            
             
             async updateTrackInfoAlternative() {
                 try {
-                    // Альтернативный метод - пробуем разные CORS proxy
-                    const proxies = [
-                        'https://cors-anywhere.herokuapp.com/',
-                        'https://api.allorigins.win/raw?url=',
-                        'https://thingproxy.freeboard.io/fetch/'
-                    ];
+                    const response = await fetch('http://193.168.3.158:8000/');
+                    const text = await response.text();
                     
-                    for (const proxyUrl of proxies) {
-                        try {
-                            const icecastUrl = 'http://193.168.3.158:8000/';
-                            const response = await fetch(proxyUrl + icecastUrl, {
-                                method: 'GET',
-                                mode: 'cors',
-                                cache: 'no-cache',
-                                headers: {
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            
-                            if (response.ok) {
-                                const htmlText = await response.text();
-                                const trackData = this.parseTrackDataFromHTML(htmlText);
-                                
-                                if (trackData.title) {
-                                    this.trackTitle.textContent = trackData.title;
-                                    this.trackArtist.textContent = trackData.artist;
-                                    
-                                    // Пытаемся найти обложку для трека
-                                    this.searchCoverForTrack(trackData.artist, trackData.title);
-                                    return; // Успешно получили данные
-                                }
-                            }
-                        } catch (proxyError) {
-                            console.log(`Proxy ${proxyUrl} failed:`, proxyError);
-                            continue; // Пробуем следующий proxy
-                        }
+                    // Простая парсинг HTML для извлечения информации о треке
+                    const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+                    if (titleMatch) {
+                        this.trackTitle.textContent = titleMatch[1];
                     }
-                    
-                    // Если все proxy не сработали, используем статичную информацию
-                    console.log('All proxies failed, using static track info');
-                    this.setDefaultTrackInfo();
                 } catch (error) {
-                    console.log('Alternative track info error:', error);
-                    this.setDefaultTrackInfo();
+                    console.log('Alternative track info update failed:', error);
                 }
             }
             
-            parseTrackDataFromHTML(htmlText) {
-                const trackData = {
-                    title: '',
-                    artist: '',
-                    cover: ''
-                };
-                
-                try {
-                    // Ищем "Currently playing:" в HTML
-                    const currentlyPlayingMatch = htmlText.match(/Currently playing:\s*([^<]+)/i);
-                    if (currentlyPlayingMatch) {
-                        const trackString = currentlyPlayingMatch[1].trim();
-                        const parsed = this.parseTrackInfo(trackString);
-                        trackData.title = parsed.title;
-                        trackData.artist = parsed.artist;
-                    }
-                } catch (error) {
-                    console.log('HTML parsing error:', error);
-                }
-                
-                return trackData;
-            }
         }
         
         // Инициализация плеера

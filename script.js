@@ -161,11 +161,7 @@ class RadioPlayer {
     }
     
     async startTrackInfoUpdate() {
-        // Устанавливаем статичную информацию по умолчанию
-        this.setDefaultTrackInfo();
-        
-        // Пытаемся получить информацию с сервера независимо от протокола
-        console.log('Trying to fetch track info from Icecast server...');
+        // Обновляем информацию о треке каждые 10 секунд
         this.updateTrackInfo();
         this.trackUpdateInterval = setInterval(() => {
             this.updateTrackInfo();
@@ -174,23 +170,8 @@ class RadioPlayer {
     
     async updateTrackInfo() {
         try {
-            // Сначала пробуем прямой запрос (работает на HTTP)
-            if (window.location.protocol === 'http:') {
-                const response = await fetch('http://193.168.3.158:8000/status-json.xsl', {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'no-cache'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    this.processTrackData(data);
-                    return;
-                }
-            }
-            
-            // На HTTPS пробуем через наш собственный proxy
-            const response = await fetch('/api/icecast-proxy', {
+            // Получаем информацию с Icecast сервера
+            const response = await fetch('http://193.168.3.158:8000/status-json.xsl', {
                 method: 'GET',
                 mode: 'cors',
                 cache: 'no-cache'
@@ -198,94 +179,72 @@ class RadioPlayer {
             
             if (response.ok) {
                 const data = await response.json();
-                this.processTrackData(data);
+                
+                // Ищем информацию о нашем потоке
+                if (data.icestats && data.icestats.source) {
+                    const source = data.icestats.source;
+                    let currentTrack = '';
+                    
+                    // Ищем текущий трек в разных форматах
+                    if (source.title) {
+                        currentTrack = source.title;
+                    } else if (source.yp_currently_playing) {
+                        currentTrack = source.yp_currently_playing;
+                    } else if (source.server_description) {
+                        currentTrack = source.server_description;
+                    }
+                    
+                    if (currentTrack && currentTrack !== this.lastTrackTitle) {
+                        const trackInfo = this.parseTrackInfo(currentTrack);
+                        
+                        this.trackTitle.textContent = trackInfo.title;
+                        this.artistName.textContent = trackInfo.artist;
+                        
+                        this.lastTrackTitle = trackInfo.title;
+                        this.lastArtistName = trackInfo.artist;
+                        
+                        // Пытаемся найти обложку для трека
+                        this.searchCoverForTrack(trackInfo.artist, trackInfo.title);
+                    }
+                }
             } else {
-                // Если наш proxy недоступен, пробуем внешние CORS proxy
+                // Если Icecast недоступен, пробуем альтернативный метод
                 await this.updateTrackInfoAlternative();
             }
         } catch (error) {
-            console.log('Track info error:', error);
+            console.log('Icecast track info error:', error);
             // Пробуем альтернативный метод
             await this.updateTrackInfoAlternative();
         }
     }
     
-    processTrackData(data) {
-        // Ищем информацию о нашем потоке
-        if (data.icestats && data.icestats.source) {
-            const source = data.icestats.source;
-            let currentTrack = '';
-            
-            // Ищем текущий трек в разных форматах
-            if (source.title) {
-                currentTrack = source.title;
-            } else if (source.yp_currently_playing) {
-                currentTrack = source.yp_currently_playing;
-            } else if (source.server_description) {
-                currentTrack = source.server_description;
-            }
-            
-            if (currentTrack && currentTrack !== this.lastTrackTitle) {
-                const trackInfo = this.parseTrackInfo(currentTrack);
-                
-                this.trackTitle.textContent = trackInfo.title;
-                this.artistName.textContent = trackInfo.artist;
-                
-                this.lastTrackTitle = trackInfo.title;
-                this.lastArtistName = trackInfo.artist;
-                
-                // Пытаемся найти обложку для трека
-                this.searchCoverForTrack(trackInfo.artist, trackInfo.title);
-            }
-        }
-    }
     
     async updateTrackInfoAlternative() {
         try {
-            // Альтернативный метод - пробуем разные CORS proxy
-            const proxies = [
-                'https://cors-anywhere.herokuapp.com/',
-                'https://api.allorigins.win/raw?url=',
-                'https://thingproxy.freeboard.io/fetch/'
-            ];
+            // Альтернативный метод - парсим HTML страницу статуса
+            const response = await fetch('http://193.168.3.158:8000/', {
+                method: 'GET',
+                mode: 'cors',
+                cache: 'no-cache'
+            });
             
-            for (const proxyUrl of proxies) {
-                try {
-                    const icecastUrl = 'http://193.168.3.158:8000/';
-                    const response = await fetch(proxyUrl + icecastUrl, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-cache',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
+            if (response.ok) {
+                const htmlText = await response.text();
+                const trackData = this.parseTrackDataFromHTML(htmlText);
+                
+                if (trackData.title && trackData.title !== this.lastTrackTitle) {
+                    this.trackTitle.textContent = trackData.title;
+                    this.artistName.textContent = trackData.artist;
                     
-                    if (response.ok) {
-                        const htmlText = await response.text();
-                        const trackData = this.parseTrackDataFromHTML(htmlText);
-                        
-                        if (trackData.title && trackData.title !== this.lastTrackTitle) {
-                            this.trackTitle.textContent = trackData.title;
-                            this.artistName.textContent = trackData.artist;
-                            
-                            this.lastTrackTitle = trackData.title;
-                            this.lastArtistName = trackData.artist;
-                            
-                            // Пытаемся найти обложку для трека
-                            this.searchCoverForTrack(trackData.artist, trackData.title);
-                            return; // Успешно получили данные
-                        }
-                    }
-                } catch (proxyError) {
-                    console.log(`Proxy ${proxyUrl} failed:`, proxyError);
-                    continue; // Пробуем следующий proxy
+                    this.lastTrackTitle = trackData.title;
+                    this.lastArtistName = trackData.artist;
+                    
+                    // Пытаемся найти обложку для трека
+                    this.searchCoverForTrack(trackData.artist, trackData.title);
                 }
+            } else {
+                this.setDefaultTrackInfo();
             }
-            
-            // Если все proxy не сработали, используем статичную информацию
-            console.log('All proxies failed, using static track info');
-            this.setDefaultTrackInfo();
         } catch (error) {
             console.log('Alternative track info error:', error);
             this.setDefaultTrackInfo();
@@ -411,45 +370,13 @@ class RadioPlayer {
     }
     
     setDefaultTrackInfo() {
-        console.log('Setting default track info...');
         this.trackTitle.textContent = 'Radio Nostalgie';
         this.artistName.textContent = 'Музыка проверенная временем';
-        const coverUrl = this.getDefaultCover();
-        console.log('Setting cover URL:', coverUrl.substring(0, 100) + '...');
-        this.albumCover.src = coverUrl;
-        
-        // Добавляем обработчик для проверки загрузки обложки
-        this.albumCover.onload = () => {
-            console.log('Cover loaded successfully');
-        };
-        this.albumCover.onerror = (e) => {
-            console.error('Cover failed to load:', e);
-        };
+        this.albumCover.src = this.getDefaultCover();
     }
     
     getDefaultCover() {
-        // Создаем красивую обложку для Radio Nostalgie
-        const svg = `
-        <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-                </linearGradient>
-                <linearGradient id="text" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:#f0f0f0;stop-opacity:1" />
-                </linearGradient>
-            </defs>
-            <rect width="200" height="200" fill="url(#bg)" rx="15"/>
-            <circle cx="100" cy="80" r="25" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
-            <circle cx="100" cy="80" r="15" fill="rgba(255,255,255,0.3)"/>
-            <circle cx="100" cy="80" r="5" fill="rgba(255,255,255,0.8)"/>
-            <text x="100" y="130" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="url(#text)" text-anchor="middle">Radio</text>
-            <text x="100" y="150" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="url(#text)" text-anchor="middle">Nostalgie</text>
-            <text x="100" y="170" font-family="Arial, sans-serif" font-size="12" fill="rgba(255,255,255,0.8)" text-anchor="middle">Музыка проверенная временем</text>
-        </svg>`;
-        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjBmMGYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5SYWRpbyBOb3N0YWxnaWU8L3RleHQ+Cjwvc3ZnPgo=';
     }
 }
 
