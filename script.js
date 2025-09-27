@@ -164,13 +164,19 @@ class RadioPlayer {
         // Устанавливаем статичную информацию по умолчанию
         this.setDefaultTrackInfo();
         
-        // Пытаемся получить информацию с сервера только если мы не на HTTPS
-        if (window.location.protocol !== 'https:') {
-            this.updateTrackInfo();
-            this.trackUpdateInterval = setInterval(() => {
-                this.updateTrackInfo();
-            }, 10000);
+        // На HTTPS сайтах используем только статичную информацию
+        if (window.location.protocol === 'https:') {
+            console.log('HTTPS detected - using static track info only');
+            // На сервере используем только статичную информацию
+            return;
         }
+        
+        // На HTTP сайтах пытаемся получить информацию с сервера
+        console.log('HTTP detected - trying to fetch track info');
+        this.updateTrackInfo();
+        this.trackUpdateInterval = setInterval(() => {
+            this.updateTrackInfo();
+        }, 10000);
     }
     
     async updateTrackInfo() {
@@ -380,13 +386,45 @@ class RadioPlayer {
     }
     
     setDefaultTrackInfo() {
+        console.log('Setting default track info...');
         this.trackTitle.textContent = 'Radio Nostalgie';
         this.artistName.textContent = 'Музыка проверенная временем';
-        this.albumCover.src = this.getDefaultCover();
+        const coverUrl = this.getDefaultCover();
+        console.log('Setting cover URL:', coverUrl.substring(0, 100) + '...');
+        this.albumCover.src = coverUrl;
+        
+        // Добавляем обработчик для проверки загрузки обложки
+        this.albumCover.onload = () => {
+            console.log('Cover loaded successfully');
+        };
+        this.albumCover.onerror = (e) => {
+            console.error('Cover failed to load:', e);
+        };
     }
     
     getDefaultCover() {
-        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjBmMGYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5SYWRpbyBOb3N0YWxnaWU8L3RleHQ+Cjwvc3ZnPgo=';
+        // Создаем красивую обложку для Radio Nostalgie
+        const svg = `
+        <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="text" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#f0f0f0;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            <rect width="200" height="200" fill="url(#bg)" rx="15"/>
+            <circle cx="100" cy="80" r="25" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+            <circle cx="100" cy="80" r="15" fill="rgba(255,255,255,0.3)"/>
+            <circle cx="100" cy="80" r="5" fill="rgba(255,255,255,0.8)"/>
+            <text x="100" y="130" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="url(#text)" text-anchor="middle">Radio</text>
+            <text x="100" y="150" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="url(#text)" text-anchor="middle">Nostalgie</text>
+            <text x="100" y="170" font-family="Arial, sans-serif" font-size="12" fill="rgba(255,255,255,0.8)" text-anchor="middle">Музыка проверенная временем</text>
+        </svg>`;
+        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
     }
 }
 
