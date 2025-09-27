@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Код iframe для Radio Nostalgie</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        .example {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .iframe-demo {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .size-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .size-option {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .size-option h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Radio Nostalgie - Iframe Код для вставки</h1>
+        
+        <div class="iframe-demo">
+            <h3>Предварительный просмотр:</h3>
+            <iframe src="https://iframe-music.vercel.app/iframe" width="350" height="400" frameborder="0" style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></iframe>
+        </div>
+
+        <h2>📋 Основной код iframe:</h2>
+        <div class="code-block">
+            <pre>&lt;iframe src="https://iframe-music.vercel.app/iframe" width="350" height="400" frameborder="0"&gt;&lt;/iframe&gt;</pre>
+            <button class="copy-btn" onclick="copyToClipboard('&lt;iframe src=&quot;https://iframe-music.vercel.app/iframe&quot; width=&quot;350&quot; height=&quot;400&quot; frameborder=&quot;0&quot;&gt;&lt;/iframe&gt;')">Копировать</button>
+        </div>
+
+        <h2>📏 Размеры iframe:</h2>
+        <div class="size-options">
+            <div class="size-option">
+                <h4>Компактный (300x350)</h4>
+                <div class="code-block">
+                    <pre>&lt;iframe src="https://iframe-music.vercel.app/iframe" width="300" height="350" frameborder="0"&gt;&lt;/iframe&gt;</pre>
+                </div>
+            </div>
+            <div class="size-option">
+                <h4>Стандартный (350x400)</h4>
+                <div class="code-block">
+                    <pre>&lt;iframe src="https://iframe-music.vercel.app/iframe" width="350" height="400" frameborder="0"&gt;&lt;/iframe&gt;</pre>
+                </div>
+            </div>
+            <div class="size-option">
+                <h4>Широкий (400x450)</h4>
+                <div class="code-block">
+                    <pre>&lt;iframe src="https://iframe-music.vercel.app/iframe" width="400" height="450" frameborder="0"&gt;&lt;/iframe&gt;</pre>
+                </div>
+            </div>
+            <div class="size-option">
+                <h4>Адаптивный (100% ширины)</h4>
+                <div class="code-block">
+                    <pre>&lt;iframe src="https://iframe-music.vercel.app/iframe" width="100%" height="400" frameborder="0"&gt;&lt;/iframe&gt;</pre>
+                </div>
+            </div>
+        </div>
+
+        <h2>🎛️ Управление плеером через JavaScript:</h2>
+        <div class="code-block">
+            <pre>// Получить iframe элемент
+const iframe = document.querySelector('iframe');
+
+// Воспроизвести
+iframe.contentWindow.postMessage({action: 'play'}, '*');
+
+// Остановить
+iframe.contentWindow.postMessage({action: 'pause'}, '*');
+
+// Установить громкость (0-100)
+iframe.contentWindow.postMessage({action: 'setVolume', volume: 70}, '*');</pre>
+        </div>
+
+        <h2>📱 Для мобильных устройств:</h2>
+        <div class="code-block">
+            <pre>&lt;iframe src="https://iframe-music.vercel.app/iframe" 
+        width="100%" 
+        height="400" 
+        frameborder="0"
+        allow="autoplay"
+        style="max-width: 400px; margin: 0 auto; display: block;"&gt;&lt;/iframe&gt;</pre>
+        </div>
+
+        <h2>✨ Особенности плеера:</h2>
+        <ul>
+            <li>✅ Красивый современный дизайн с градиентами</li>
+            <li>✅ Адаптивный - подстраивается под размер iframe</li>
+            <li>✅ Управление громкостью</li>
+            <li>✅ Статус подключения в реальном времени</li>
+            <li>✅ Обложка трека с hover эффектами</li>
+            <li>✅ Поддержка мобильных устройств</li>
+            <li>✅ Обработка ошибок подключения</li>
+            <li>✅ Работает на HTTPS сайтах</li>
+        </ul>
+
+        <div class="example">
+            <h3>💡 Пример использования на сайте:</h3>
+            <p>Просто скопируйте код выше и вставьте его в HTML код вашего сайта в том месте, где хотите разместить плеер.</p>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Код скопирован в буфер обмена!');
+            }, function(err) {
+                console.error('Ошибка копирования: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
